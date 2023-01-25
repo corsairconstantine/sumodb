@@ -16,12 +16,12 @@ type rikishi struct {
 }
 
 type bout struct {
-	ID         int    `json:"id"`
-	Winner     string `json:"winner"`
-	Loser      string `json:"loser"`
-	Tournament string `json:"tournament"`
-	Division   string `json:"division"`
-	Day        uint8  `json:"day"`
+	ID         int     `json:"id"`
+	Winner     rikishi `json:"winner"`
+	Loser      rikishi `json:"loser"`
+	Tournament string  `json:"tournament"`
+	Division   string  `json:"division"`
+	Day        uint8   `json:"day"`
 }
 
 type APIserver struct {
