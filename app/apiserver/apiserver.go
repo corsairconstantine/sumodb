@@ -7,23 +7,6 @@ import (
 	"github.com/corsairconstantine/http-rest-api/app/store"
 )
 
-type rikishi struct {
-	ID      int    `json:"id"`
-	Shikona string `json:"shikona"`
-	Rank    string `json:"rank"`
-	Height  uint8  `json:"height"`
-	Weight  uint8  `json:"weight"`
-}
-
-type bout struct {
-	ID         int     `json:"id"`
-	Winner     rikishi `json:"winner"`
-	Loser      rikishi `json:"loser"`
-	Tournament string  `json:"tournament"`
-	Division   string  `json:"division"`
-	Day        uint8   `json:"day"`
-}
-
 type APIserver struct {
 	config *Config
 	logger *log.Logger
@@ -62,5 +45,9 @@ func (s *APIserver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.boutsHandler(w, r)
 	case "/rikishis":
 		s.rikishiHandler(w, r)
+	case "/rikishis?":
+		s.rikishiQuery(w, r)
+	default:
+		http.Error(w, "Not found LOLE", 404)
 	}
 }
