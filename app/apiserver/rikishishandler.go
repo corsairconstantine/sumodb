@@ -22,13 +22,17 @@ type rikishisHandler struct {
 
 func (h *rikishisHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	switch r.Method {
-	case http.MethodGet:
-		h.getRikishis(w, r)
-	case http.MethodPost:
-		h.addRikishi(w, r)
-	default:
-		http.Error(w, "Wrong method", 405)
+	if r.URL.Query() != nil {
+		h.rikishisQuery(w, r)
+	} else {
+		switch r.Method {
+		case http.MethodGet:
+			h.getRikishis(w, r)
+		case http.MethodPost:
+			h.addRikishi(w, r)
+		default:
+			http.Error(w, "Wrong method", 405)
+		}
 	}
 }
 
@@ -67,4 +71,8 @@ func (h *rikishisHandler) addRikishi(w http.ResponseWriter, r *http.Request) {
 		h.logger.Println(err)
 	}
 	h.logger.Printf("Added a row with id: %v\n", id)
+}
+
+func (h *rikishisHandler) rikishisQuery(w http.ResponseWriter, r *http.Request) {
+
 }

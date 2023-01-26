@@ -26,6 +26,8 @@ func new(serverConfig *Config, storeConfig *store.Config) *APIserver {
 	s.mux.Handle("/rikishis/", rHandler)
 	rsHandler := &rikishisHandler{s.logger, s.store.Db}
 	s.mux.Handle("/rikishis", rsHandler)
+	bHandler := &boutsHandler{s.logger, s.store.Db}
+	s.mux.Handle("/bouts", bHandler)
 
 	return s
 }
