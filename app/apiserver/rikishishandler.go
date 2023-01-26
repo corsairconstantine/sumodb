@@ -1,7 +1,9 @@
 package apiserver
 
 import (
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -13,51 +15,56 @@ type rikishi struct {
 	Weight  uint8  `json:"weight"`
 }
 
-func (s *APIserver) rikishiHandler(w http.ResponseWriter, r *http.Request) {
+type rikishisHandler struct {
+	logger *log.Logger
+	db     *sql.DB
+}
+
+func (h *rikishisHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		s.getRikishis(w, r)
+		h.getRikishis(w, r)
 	case http.MethodPost:
-		s.addRikishi(w, r)
+		h.addRikishi(w, r)
 	default:
 		http.Error(w, "Wrong method", 405)
 	}
 }
 
-func (s *APIserver) getRikishis(w http.ResponseWriter, r *http.Request) {
-	db := s.store.Db
+func (h *rikishisHandler) getRikishis(w http.ResponseWriter, r *http.Request) {
+	db := h.db
 	rows, err := db.Query("SELECT * FROM rikishi;")
 	if err != nil {
-		s.logger.Fatal(err)
+		h.logger.Println(err)
 	}
 	var rikishis []rikishi
 	for rows.Next() {
 		var r rikishi
 		if err := rows.Scan(&r.ID, &r.Shikona, &r.Rank, &r.Height, &r.Weight); err != nil {
-			s.logger.Fatal(err)
+			h.logger.Println(err)
 		}
 		rikishis = append(rikishis, r)
 	}
 	json.NewEncoder(w).Encode(rikishis)
 }
 
-func (s *APIserver) addRikishi(w http.ResponseWriter, r *http.Request) {
-	db := s.store.Db
+func (h *rikishisHandler) addRikishi(w http.ResponseWriter, r *http.Request) {
+	db := h.db
 	var newrikishi rikishi
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&newrikishi)
 	if err != nil {
-		s.logger.Println(err)
+		h.logger.Println(err)
 	}
 	result, err := db.Exec("INSERT INTO rikishi (shikona, rank, height, weight) VALUES ($1, $2, $3, $4);",
 		newrikishi.Shikona, newrikishi.Rank, newrikishi.Height, newrikishi.Weight)
 	if err != nil {
-		s.logger.Println(err)
+		h.logger.Println(err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		s.logger.Println(err)
+		h.logger.Println(err)
 	}
-	s.logger.Printf("Added a row with id: %v\n", id)
+	h.logger.Printf("Added a row with id: %v\n", id)
 }
