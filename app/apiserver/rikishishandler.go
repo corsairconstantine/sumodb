@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 )
 
 type rikishi struct {
@@ -22,7 +23,7 @@ type rikishisHandler struct {
 
 func (h *rikishisHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if r.URL.Query() != nil {
+	if r.URL.RawQuery != "" {
 		h.rikishisQuery(w, r)
 	} else {
 		switch r.Method {
@@ -74,5 +75,25 @@ func (h *rikishisHandler) addRikishi(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *rikishisHandler) rikishisQuery(w http.ResponseWriter, r *http.Request) {
-
+	db := h.db
+	vals, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		h.logger.Println(err)
+	}
+	rows, err := db.Query("SELECT * FROM rikishi WHERE shikona ILIKE '%' || $1 || '%' AND rank ILIKE '%' || $2 || '%';",
+		vals.Get("shikona"), vals.Get("rank"))
+	if err != nil {
+		h.logger.Println(err)
+	}
+	defer rows.Close()
+	var riks []rikishi
+	for rows.Next() {
+		var rik rikishi
+		err := rows.Scan(&rik.ID, &rik.Shikona, &rik.Rank, &rik.Height, &rik.Weight)
+		if err != nil {
+			h.logger.Println(err)
+		}
+		riks = append(riks, rik)
+	}
+	json.NewEncoder(w).Encode(&riks)
 }
