@@ -78,7 +78,7 @@ func (h *rikishisHandler) rikishisQuery(w http.ResponseWriter, r *http.Request) 
 	db := h.db
 	vals, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		h.logger.Println(err)
+		http.Error(w, "ERROR --Invalid query", 400)
 	}
 	rows, err := db.Query("SELECT * FROM rikishi WHERE shikona ILIKE '%' || $1 || '%' AND rank ILIKE '%' || $2 || '%';",
 		vals.Get("shikona"), vals.Get("rank"))
