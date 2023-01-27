@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/corsairconstantine/http-rest-api/app/store"
+	"github.com/corsairconstantine/http-rest-api/pkg/store"
 )
 
 type APIserver struct {
