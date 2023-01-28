@@ -14,6 +14,12 @@ type APIserver struct {
 	store  *store.Store
 }
 
+type appError struct {
+	Error   error  `json:"error"`
+	Message string `json:"message"`
+	Code    int    `json:"Code"`
+}
+
 // create a new api server
 func new(serverConfig *Config, storeConfig *store.Config) *APIserver {
 	s := &APIserver{
