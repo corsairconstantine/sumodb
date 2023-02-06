@@ -6,14 +6,20 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 type rikishi struct {
 	ID      int    `json:"id"`
 	Shikona string `json:"shikona"`
-	Rank    string `json:"rank"`
-	Height  uint8  `json:"height"`
-	Weight  uint8  `json:"weight"`
+	//RealName string `json:"realname"`
+	//Heya string 	`json:"heya"`
+	//DateofBirth string `json:"dateofbirth"`
+	//PlaceofBirth string `json:"placeofbirth"`
+	//ShikonaHistory string `json:"shikonahistory"`
+	Rank   string `json:"rank"`
+	Height uint16 `json:"height"`
+	Weight uint16 `json:"weight"`
 }
 
 type rikishisHandler struct {
@@ -35,6 +41,10 @@ func (h *rikishisHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		case http.MethodPost:
 			if err := h.addRikishi(w, r); err != nil {
+				json.NewEncoder(w).Encode(err)
+			}
+		case http.MethodDelete:
+			if err := h.deleteRikishis(w, r); err != nil {
 				json.NewEncoder(w).Encode(err)
 			}
 		default:
@@ -61,33 +71,35 @@ func (h *rikishisHandler) getRikishis(w http.ResponseWriter, r *http.Request) *a
 }
 
 func (h *rikishisHandler) addRikishi(w http.ResponseWriter, r *http.Request) *appError {
-	db := h.db
 	var newrikishi rikishi
+	var lastInsertId int64
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&newrikishi)
 	if err != nil {
 		return &appError{err, err.Error(), 400}
 	}
-	result, err := db.Exec("INSERT INTO rikishi (shikona, rank, height, weight) VALUES ($1, $2, $3, $4);",
-		newrikishi.Shikona, newrikishi.Rank, newrikishi.Height, newrikishi.Weight)
+	err = h.db.QueryRow("INSERT INTO rikishi (shikona, rank, height, weight) VALUES ($1, $2, $3, $4) RETURNING id;",
+		newrikishi.Shikona, newrikishi.Rank, newrikishi.Height, newrikishi.Weight).Scan(&lastInsertId)
 	if err != nil {
 		return &appError{err, err.Error(), 404}
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return &appError{err, err.Error(), 500}
-	}
-	h.logger.Printf("Added a row with id: %v\n", id) //return this message to the client
+
+	json.NewEncoder(w).Encode("Added rikishi with id: " + strconv.FormatInt(lastInsertId, 10))
+	return nil
+}
+
+func (h *rikishisHandler) deleteRikishis(w http.ResponseWriter, r *http.Request) *appError {
+	h.db.Exec("DELETE from rikishi;")
+	json.NewEncoder(w).Encode("Done")
 	return nil
 }
 
 func (h *rikishisHandler) rikishisQuery(w http.ResponseWriter, r *http.Request) *appError {
-	db := h.db
 	vals, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		return &appError{err, "Invalid query", 400}
 	}
-	rows, err := db.Query("SELECT * FROM rikishi WHERE shikona ILIKE '%' || $1 || '%' AND rank ILIKE '%' || $2 || '%';",
+	rows, err := h.db.Query("SELECT * FROM rikishi WHERE shikona ILIKE '%' || $1 || '%' AND rank ILIKE '%' || $2 || '%';",
 		vals.Get("shikona"), vals.Get("rank"))
 	if err != nil {
 		return &appError{err, err.Error(), 500}

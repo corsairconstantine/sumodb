@@ -9,12 +9,14 @@ import (
 )
 
 type bout struct {
-	ID         int     `json:"id"`
-	Winner     rikishi `json:"winner"`
-	Loser      rikishi `json:"loser"`
-	Tournament string  `json:"tournament"`
-	Division   string  `json:"division"`
-	Day        uint8   `json:"day"`
+	ID     int     `json:"id"`
+	Winner rikishi `json:"winner"`
+	Loser  rikishi `json:"loser"`
+	//WinnerRank string `json:"winnerrank"`
+	//LoserRank string `json:"loserrank"`
+	Tournament string `json:"tournament"`
+	Division   string `json:"division"`
+	Day        uint8  `json:"day"`
 }
 
 type boutsHandler struct {
