@@ -1,0 +1,1 @@
+ALTER TABLE rikishis ADD CONSTRAINT shikona_history_check CHECK (array_length(shikona_history, 1) BETWEEN 1 AND 10);

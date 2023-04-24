@@ -1,6 +1,0 @@
-1. better error handling
-2. better logging
-3. refactor sql queries and scans
-4. look up better project directory structure
-5. comments
-6. concurrency
