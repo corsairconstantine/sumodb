@@ -177,19 +177,41 @@ func (app *application) deleteRikishiHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-/*
-func (app *application) listRikishiHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) listRikishisHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Shikona string
-		ShikonaHistory []string
-		Page int
-		PageSize int
-		Sort string
+		Shikona     string
+		HighestRank string
+		Heya        string
+		data.Filters
 	}
 
 	v := validator.New()
 
 	qs := r.URL.Query()
 
-	input.Shikona
-}*/
+	input.Shikona = app.readString(qs, "shikona", "")
+	input.HighestRank = app.readString(qs, "highest_rank", "")
+	input.Heya = app.readString(qs, "heya", "")
+
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Filters.Sort = app.readString(qs, "sort", "shikona")
+
+	input.Filters.SortSafelist = []string{"shikona", "highest_rank", "heya", "-shikona", "-highest_rank", "-heya"}
+
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	rikishis, metadata, err := app.models.Rikishis.GetAll(input.Shikona, input.HighestRank, input.Heya, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"rikishis": rikishis, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
