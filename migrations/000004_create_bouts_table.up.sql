@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS bouts (
     id bigserial PRIMARY KEY,
-    tournament date NOT NULL,
+    tournament text NOT NULL,
     day text NOT NULL,
     winner text REFERENCES rikishis(shikona),
     loser text REFERENCES rikishis(shikona),

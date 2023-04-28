@@ -186,7 +186,6 @@ func (app *application) listRikishisHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	v := validator.New()
-
 	qs := r.URL.Query()
 
 	input.Shikona = app.readString(qs, "shikona", "")

@@ -53,6 +53,28 @@ func Unique(values []string) bool {
 	return len(values) == len(uniqueValues)
 }
 
+func ValidTournament(tournament string) bool {
+	if strings.TrimSpace(tournament) == "" {
+		return false
+	}
+	fields := strings.Fields(tournament)
+	year, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return false
+	}
+
+	if year < 1900 || year > 2050 {
+		return false
+	}
+
+	months := []string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Sep", "Oct", "Nov", "Dec"}
+	if !In(fields[len(fields)-1], months...) {
+		return false
+	}
+
+	return true
+}
+
 func ValidDay(day string) bool {
 	if day == "Playoff" {
 		return true

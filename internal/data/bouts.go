@@ -11,7 +11,7 @@ import (
 
 type Bout struct {
 	ID         int64
-	Tournament Date
+	Tournament string
 	Day        string
 	Winner     string
 	Loser      string
@@ -29,7 +29,7 @@ func (b BoutModel) Insert(bout *Bout) error {
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, version`
 
-	args := []interface{}{bout.Tournament.Time, bout.Day, bout.Winner, bout.Loser, bout.Kimarite}
+	args := []interface{}{bout.Tournament, bout.Day, bout.Winner, bout.Loser, bout.Kimarite}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -54,7 +54,7 @@ func (b BoutModel) Get(id int64) (*Bout, error) {
 
 	err := b.DB.QueryRowContext(ctx, query, id).Scan(
 		&bout.ID,
-		&bout.Tournament.Time,
+		&bout.Tournament,
 		&bout.Day,
 		&bout.Winner,
 		&bout.Loser,
@@ -82,7 +82,7 @@ func (b BoutModel) Update(bout *Bout) error {
 		RETURNING version`
 
 	args := []interface{}{
-		bout.Tournament.Time,
+		bout.Tournament,
 		bout.Day,
 		bout.Winner,
 		bout.Loser,
@@ -134,8 +134,7 @@ func (b BoutModel) Delete(id int64) error {
 }
 
 func ValidateBout(v *validator.Validator, b *Bout, rm RikishiModel) {
-	v.Check(!b.Tournament.Before(time.Date(1900, 0, 0, 0, 0, 0, 0, time.UTC)), "tournament", "date must be after year 1900")
-	v.Check(!b.Tournament.After(time.Date(2050, 0, 0, 0, 0, 0, 0, time.UTC)), "tournament", "date must be before year 2050")
+	v.Check(validator.ValidTournament(b.Tournament), "tournament", "year must be between 1900 and 2050. Month must be 3 letters. Example: 2022 Nov")
 
 	v.Check(validator.ValidDay(b.Day), "day", "must start with 'Day' followed by a number 1-15. Alternatively can be 'Playoff'")
 

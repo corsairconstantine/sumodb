@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/corsairconstantine/sumodb/internal/validator"
@@ -69,6 +70,86 @@ func (r RikishiModel) Get(shikona string) (*Rikishi, error) {
 	}
 
 	return &rikishi, nil
+}
+
+func (r RikishiModel) GetAll(shikona, highestRank, heya string, filters Filters) ([]*Rikishi, Metadata, error) {
+	query := fmt.Sprintf(`
+		SELECT count(*) OVER(), shikona, highest_rank, heya, shikona_history, version
+		FROM rikishis
+		WHERE (to_tsvector('simple', shikona) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		AND (LOWER(highest_rank) = LOWER($2) OR $2 = '')
+		AND (LOWER(heya) = LOWER($3) OR $3 = '')
+		ORDER BY %s %s, shikona ASC
+		LIMIT $4 OFFSET $5`, filters.SortColumn(), filters.sortDirection())
+
+	//need a custom sort by rank: yokozuna->ozeki->sekiwake->komusubi->maegashira->
+	//juryo->makushita->sandanme->jonidan->jonokuchi->mae-zumo
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []interface{}{shikona, highestRank, heya, filters.limit(), filters.offset()}
+
+	rows, err := r.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+
+	defer rows.Close()
+
+	totalRecords := 0
+	rikishis := []*Rikishi{}
+
+	for rows.Next() {
+		var rikishi Rikishi
+
+		err := rows.Scan(
+			&totalRecords,
+			&rikishi.Shikona,
+			&rikishi.HighestRank,
+			&rikishi.Heya,
+			pq.Array(&rikishi.ShikonaHistory),
+			&rikishi.Version,
+		)
+
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+
+		rikishis = append(rikishis, &rikishi)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return rikishis, metadata, nil
+}
+
+func (r RikishiModel) GetShikonaHistory(shikona string) ([]string, error) {
+	if shikona == "" {
+		return []string{}, nil
+	}
+
+	query := `
+		SELECT shikona_history
+		FROM rikishis
+		WHERE shikona = $1`
+
+	var shikona_history []string
+	err := r.DB.QueryRow(query, shikona).Scan(pq.Array(&shikona_history))
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return shikona_history, nil
 }
 
 func (r RikishiModel) Update(rikishi *Rikishi) error {

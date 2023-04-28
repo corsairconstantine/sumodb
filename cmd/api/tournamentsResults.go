@@ -11,10 +11,12 @@ import (
 
 func (app *application) createTournamentResultHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Tournament data.Date `json:"tournament"`
-		Rikishi    string    `json:"rikishi"`
-		Rank       string    `json:"rank"`
-		Result     string    `json:"result"`
+		Tournament string `json:"tournament"`
+		Rikishi    string `json:"rikishi"`
+		Rank       string `json:"rank"`
+		Wins       int32  `json:"wins"`
+		Losses     int32  `json:"losses"`
+		Absent     int32  `json:"absent"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -27,7 +29,9 @@ func (app *application) createTournamentResultHandler(w http.ResponseWriter, r *
 		Tournament: input.Tournament,
 		Rikishi:    input.Rikishi,
 		Rank:       input.Rank,
-		Result:     input.Result,
+		Wins:       input.Wins,
+		Losses:     input.Losses,
+		Absent:     input.Absent,
 	}
 
 	v := validator.New()
@@ -44,7 +48,6 @@ func (app *application) createTournamentResultHandler(w http.ResponseWriter, r *
 
 	headers := make(http.Header)
 	headers.Set("Location", fmt.Sprintf("/v1/tournamentsresults/%d", tr.ID))
-	//possible location "/v1/rikishis/shikona/tournamentsresults/id"
 
 	err = app.writeJSON(w, http.StatusCreated, envelope{"tournament_result": tr}, headers)
 	if err != nil {
@@ -95,10 +98,12 @@ func (app *application) updateTournamentResultHandler(w http.ResponseWriter, r *
 	}
 
 	var input struct {
-		Tournament *data.Date `json:"tournament"`
-		Rikishi    *string    `json:"rikishi"`
-		Rank       *string    `json:"rank"`
-		Result     *string    `json:"result"`
+		Tournament *string `json:"tournament"`
+		Rikishi    *string `json:"rikishi"`
+		Rank       *string `json:"rank"`
+		Wins       *int32  `json:"result"`
+		Losses     *int32  `json:"losses"`
+		Absent     *int32  `json:"absent"`
 	}
 
 	err = app.readJSON(w, r, &input)
@@ -119,8 +124,16 @@ func (app *application) updateTournamentResultHandler(w http.ResponseWriter, r *
 		tr.Rank = *input.Rank
 	}
 
-	if input.Result != nil {
-		tr.Result = *input.Result
+	if input.Wins != nil {
+		tr.Wins = *input.Wins
+	}
+
+	if input.Losses != nil {
+		tr.Losses = *input.Losses
+	}
+
+	if input.Absent != nil {
+		tr.Absent = *input.Absent
 	}
 
 	v := validator.New()
@@ -165,6 +178,53 @@ func (app *application) deleteTournamentResultHandler(w http.ResponseWriter, r *
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "tournament record successfully deleted"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) listTournamentsResultsHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Tournament string
+		Rikishi    string
+		Rank       string
+		Wins       int
+		Loses      int
+		data.Filters
+	}
+
+	v := validator.New()
+	qs := r.URL.Query()
+
+	input.Tournament = app.readString(qs, "tournament", "")
+	input.Rikishi = app.readString(qs, "rikishi", "")
+	input.Rank = app.readString(qs, "rank", "")
+	input.Wins = app.readInt(qs, "wins", 0, v)
+
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+
+	input.Filters.SortSafelist = []string{"id", "tournament", "rikishi", "rank", "wins", "-id", "-tournament", "-rikishi", "-rank", "-wins"}
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	shikonas, err := app.models.Rikishis.GetShikonaHistory(input.Rikishi)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	trs, metadata, err := app.models.TournamentsResults.GetAll(input.Tournament, input.Rank, input.Wins, shikonas, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"tournaments_results": trs, "metadata": metadata}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

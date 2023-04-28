@@ -11,11 +11,11 @@ import (
 
 func (app *application) createBoutHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Tournament data.Date `json:"tournament"`
-		Day        string    `json:"day"`
-		Winner     string    `json:"winner"`
-		Loser      string    `json:"loser"`
-		Kimarite   string    `json:"kimarite"`
+		Tournament string `json:"tournament"`
+		Day        string `json:"day"`
+		Winner     string `json:"winner"`
+		Loser      string `json:"loser"`
+		Kimarite   string `json:"kimarite"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -97,11 +97,11 @@ func (app *application) updateBoutHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	var input struct {
-		Tournament *data.Date `json:"tournament"`
-		Day        *string    `json:"day"`
-		Winner     *string    `json:"winner"`
-		Loser      *string    `json:"loser"`
-		Kimarite   *string    `json:"kimarite"`
+		Tournament *string `json:"tournament"`
+		Day        *string `json:"day"`
+		Winner     *string `json:"winner"`
+		Loser      *string `json:"loser"`
+		Kimarite   *string `json:"kimarite"`
 	}
 
 	err = app.readJSON(w, r, &input)
