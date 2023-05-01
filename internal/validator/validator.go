@@ -79,12 +79,8 @@ func ValidDay(day string) bool {
 	if day == "Playoff" {
 		return true
 	}
-	isDay_ := strings.HasPrefix(day, "Day ")
-	if !isDay_ {
-		return false
-	}
-	n := strings.TrimPrefix(day, "Day ")
-	i, err := strconv.Atoi(n)
+
+	i, err := strconv.Atoi(day)
 	if err != nil {
 		return false
 	}

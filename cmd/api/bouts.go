@@ -176,3 +176,57 @@ func (app *application) deleteBoutHandler(w http.ResponseWriter, r *http.Request
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) listBoutsHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Tournament string
+		Day        string
+		Rikishi1   string
+		Rikishi2   string
+		Kimarite   string
+		data.Filters
+	}
+
+	v := validator.New()
+	qs := r.URL.Query()
+
+	input.Tournament = app.readString(qs, "tournament", "")
+	input.Day = app.readString(qs, "day", "")
+	input.Kimarite = app.readString(qs, "kimarite", "")
+	input.Rikishi1 = app.readString(qs, "rikishi1", "")
+	input.Rikishi1 = app.readString(qs, "rikishi2", "")
+
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+
+	input.Filters.SortSafelist = []string{"id", "tournament", "-tournament"}
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	r1, err := app.models.Rikishis.GetShikonaHistory(input.Rikishi1)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	r2, err := app.models.Rikishis.GetShikonaHistory(input.Rikishi2)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	bouts, err := app.models.Bouts.GetAll(input.Tournament, input.Day, input.Kimarite, r1, r2)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"bouts": bouts}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

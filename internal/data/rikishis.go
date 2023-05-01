@@ -76,7 +76,7 @@ func (r RikishiModel) GetAll(shikona, highestRank, heya string, filters Filters)
 	query := fmt.Sprintf(`
 		SELECT count(*) OVER(), shikona, highest_rank, heya, shikona_history, version
 		FROM rikishis
-		WHERE (to_tsvector('simple', shikona) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		WHERE (array_to_string(shikona_history, ',') @@ plainto_tsquery('simple', $1) OR $1 = '')
 		AND (LOWER(highest_rank) = LOWER($2) OR $2 = '')
 		AND (LOWER(heya) = LOWER($3) OR $3 = '')
 		ORDER BY %s %s, shikona ASC
@@ -136,10 +136,9 @@ func (r RikishiModel) GetShikonaHistory(shikona string) ([]string, error) {
 	query := `
 		SELECT shikona_history
 		FROM rikishis
-		WHERE shikona = $1`
+		WHERE array_to_string(shikona_history, ',') @@ plainto_tsquery('simple', $1)`
 
-	var shikona_history []string
-	err := r.DB.QueryRow(query, shikona).Scan(pq.Array(&shikona_history))
+	rows, err := r.DB.Query(query, shikona)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -148,8 +147,24 @@ func (r RikishiModel) GetShikonaHistory(shikona string) ([]string, error) {
 			return nil, err
 		}
 	}
+	defer rows.Close()
 
-	return shikona_history, nil
+	var shikonas []string
+
+	for rows.Next() {
+		var shikona_history []string
+		err := rows.Scan(pq.Array(&shikona_history))
+		if err != nil {
+			return nil, err
+		}
+		shikonas = append(shikonas, shikona_history...)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return shikonas, nil
 }
 
 func (r RikishiModel) Update(rikishi *Rikishi) error {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/corsairconstantine/sumodb/internal/validator"
+	"github.com/lib/pq"
 )
 
 type Bout struct {
@@ -74,6 +75,56 @@ func (b BoutModel) Get(id int64) (*Bout, error) {
 	return &bout, nil
 }
 
+func (b BoutModel) GetAll(tournament, day, kimarite string, rikishi1, rikishi2 []string) ([]*Bout, error) {
+	query := `
+		SELECT id, tournament, day, winner, loser, kimarite, version
+		FROM bouts
+		WHERE (LOWER(tournament) = LOWER($1) OR $1 = '')
+		AND (day = $2 OR $2 = '')
+		AND (kimarite = $3 OR $3 = '')
+		AND (winner = ANY($4) OR loser = ANY($4) OR $4 = '{}')
+		AND (winner = ANY($5) OR loser = ANY($5) OR $5 = '{}')`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []interface{}{tournament, day, kimarite, pq.Array(rikishi1), pq.Array(rikishi2)}
+
+	rows, err := b.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	bouts := []*Bout{}
+
+	for rows.Next() {
+		var bout Bout
+
+		err := rows.Scan(
+			&bout.ID,
+			&bout.Tournament,
+			&bout.Day,
+			&bout.Winner,
+			&bout.Loser,
+			&bout.Kimarite,
+			&bout.Version,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		bouts = append(bouts, &bout)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return bouts, nil
+}
+
 func (b BoutModel) Update(bout *Bout) error {
 	query := `
 		UPDATE bouts
@@ -136,7 +187,7 @@ func (b BoutModel) Delete(id int64) error {
 func ValidateBout(v *validator.Validator, b *Bout, rm RikishiModel) {
 	v.Check(validator.ValidTournament(b.Tournament), "tournament", "year must be between 1900 and 2050. Month must be 3 letters. Example: 2022 Nov")
 
-	v.Check(validator.ValidDay(b.Day), "day", "must start with 'Day' followed by a number 1-15. Alternatively can be 'Playoff'")
+	v.Check(validator.ValidDay(b.Day), "day", "must be a number from 1 to 15. Alternatively can be 'Playoff'")
 
 	v.Check(b.Winner != "", "winner", "must be provided")
 	v.Check(len(b.Winner) <= 500, "winner", "must not be more than 500 bytes long")
@@ -146,5 +197,5 @@ func ValidateBout(v *validator.Validator, b *Bout, rm RikishiModel) {
 	v.Check(len(b.Loser) <= 500, "loser", "must not be more than 500 bytes long")
 	v.Check(rm.Exists(b.Loser), "loser", "must exist in the database")
 
-	v.Check(len(b.Kimarite) <= 500, "loser", "must not be more than 500 bytes long")
+	v.Check(len(b.Kimarite) <= 500, "kimarite", "must not be more than 500 bytes long")
 }
