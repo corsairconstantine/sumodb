@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"net/mail"
 	"regexp"
 	"strconv"
 	"strings"
@@ -89,4 +90,9 @@ func ValidDay(day string) bool {
 	}
 
 	return true
+}
+
+func ValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }

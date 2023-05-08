@@ -14,6 +14,7 @@ type Models struct {
 	Rikishis           RikishiModel
 	TournamentsResults TournamentResultModel
 	Bouts              BoutModel
+	Users              UserModel
 }
 
 func NewModels(db *sql.DB) Models {
@@ -21,5 +22,6 @@ func NewModels(db *sql.DB) Models {
 		Rikishis:           RikishiModel{DB: db},
 		TournamentsResults: TournamentResultModel{DB: db},
 		Bouts:              BoutModel{DB: db},
+		Users:              UserModel{DB: db},
 	}
 }
